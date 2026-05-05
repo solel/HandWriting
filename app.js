@@ -19,6 +19,7 @@ const missionButtons = document.querySelectorAll("[data-mission]");
 
 const SIZE = 28;
 const TEMPLATE_SIZE = SIZE * SIZE;
+const TFJS_SCRIPT_URL = "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js";
 const TFJS_MODEL_URLS = [
   "https://iwatake2222.github.io/tfjs_study/mnist/conv_mnist_tfjs/model.json",
 ];
@@ -484,6 +485,8 @@ function canvasToPixels(canvas) {
 }
 
 async function loadMnistModel() {
+  await loadTfjsScript();
+
   if (!window.tf) {
     inputStatus.textContent = "내장 모델";
     return;
@@ -510,6 +513,30 @@ async function loadMnistModel() {
 
   inputStatus.textContent = hasInk ? "예측 가능" : "내장 모델";
   resultCopy.textContent = "실제 모델을 불러오지 못하면 가벼운 내장 예측 모델로 바로 실행됩니다.";
+}
+
+function loadTfjsScript() {
+  if (window.tf) return Promise.resolve(true);
+
+  return new Promise((resolve) => {
+    const script = document.createElement("script");
+    const timeout = window.setTimeout(() => {
+      script.remove();
+      resolve(false);
+    }, 3500);
+
+    script.src = TFJS_SCRIPT_URL;
+    script.async = true;
+    script.onload = () => {
+      window.clearTimeout(timeout);
+      resolve(true);
+    };
+    script.onerror = () => {
+      window.clearTimeout(timeout);
+      resolve(false);
+    };
+    document.head.appendChild(script);
+  });
 }
 
 drawCanvas.addEventListener("pointerdown", beginDraw);

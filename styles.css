@@ -520,17 +520,31 @@ code {
 
 .evaluation-band {
   display: grid;
-  grid-template-columns: 0.8fr 1.2fr;
+  grid-template-columns: minmax(260px, 0.72fr) 1.28fr;
   gap: 18px;
-  align-items: center;
+  align-items: stretch;
   margin-top: 18px;
   padding: 22px;
 }
 
-.evaluation-band p:last-child {
+.evaluation-points {
+  display: grid;
+  gap: 10px;
+}
+
+.evaluation-points p {
   margin: 0;
+  padding: 13px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcff;
   color: var(--muted);
-  line-height: 1.7;
+  line-height: 1.62;
+}
+
+.evaluation-points strong {
+  color: var(--accent-strong);
+  font-weight: 900;
 }
 
 .site-credit {

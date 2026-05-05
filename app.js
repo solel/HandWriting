@@ -20,9 +20,7 @@ const missionButtons = document.querySelectorAll("[data-mission]");
 const SIZE = 28;
 const TEMPLATE_SIZE = SIZE * SIZE;
 const TFJS_MODEL_URLS = [
-  "https://cdn.jsdelivr.net/gh/dar5hak/offline-mnist@master/static/models/model.json",
-  "https://dar5hak.github.io/offline-mnist/static/models/model.json",
-  "https://dar5hak.github.io/offline-mnist/models/model.json",
+  "https://iwatake2222.github.io/tfjs_study/mnist/conv_mnist_tfjs/model.json",
 ];
 let isDrawing = false;
 let hasInk = false;

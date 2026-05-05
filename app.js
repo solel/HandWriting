@@ -19,11 +19,19 @@ const missionButtons = document.querySelectorAll("[data-mission]");
 
 const SIZE = 28;
 const TEMPLATE_SIZE = SIZE * SIZE;
+const TFJS_MODEL_URLS = [
+  "https://cdn.jsdelivr.net/gh/dar5hak/offline-mnist@master/static/models/model.json",
+  "https://dar5hak.github.io/offline-mnist/static/models/model.json",
+  "https://dar5hak.github.io/offline-mnist/models/model.json",
+];
 let isDrawing = false;
 let hasInk = false;
 let lastPoint = null;
 let currentPixels = new Array(TEMPLATE_SIZE).fill(0);
 let templates = [];
+let mnistModel = null;
+let mnistModelReady = false;
+let predictionRun = 0;
 
 function setupCanvas() {
   drawCtx.fillStyle = "#0f172a";
@@ -251,20 +259,57 @@ function renderProbabilities(probabilities, winner) {
   });
 }
 
-function predict() {
+async function predict() {
   if (!hasInk) {
     resultCopy.textContent = "먼저 캔버스에 숫자를 그려주세요.";
     return;
   }
-  const rawScores = templates.map((template) => similarity(currentPixels, template.pixels));
+
+  const runId = (predictionRun += 1);
+  if (mnistModelReady) {
+    const modelProbabilities = await predictWithMnistModel(currentPixels);
+    if (runId !== predictionRun) return;
+    if (modelProbabilities) {
+      showPrediction(modelProbabilities, "실제 MNIST로 학습된 모델이 0부터 9까지의 가능성을 계산했습니다.");
+      return;
+    }
+  }
+
+  const rawScores = templates.map((digitTemplates) =>
+    Math.max(...digitTemplates.map((template) => similarity(currentPixels, template.pixels)))
+  );
   const features = extractFeatures(currentPixels);
   const adjustedScores = rawScores.map((score, digit) => score + featureBonus(digit, features));
-  const probabilities = softmax(adjustedScores, 9);
+  const probabilities = softmax(adjustedScores, 13);
+  showPrediction(probabilities, "가벼운 내장 예측 모델이 0부터 9까지의 가능성을 계산했습니다.");
+}
+
+function showPrediction(probabilities, sourceMessage) {
   const winner = probabilities.indexOf(Math.max(...probabilities));
   predictionBadge.textContent = winner;
   renderProbabilities(probabilities, winner);
-  resultCopy.textContent = `AI의 예측: ${winner}. 출력층의 10개 노드 중 ${winner} 노드의 소프트맥스 확률이 가장 큽니다.`;
+  resultCopy.textContent = `AI의 예측: ${winner}. ${sourceMessage}`;
   inputStatus.textContent = "예측 완료";
+}
+
+async function predictWithMnistModel(pixels) {
+  if (!window.tf || !mnistModel) return null;
+
+  try {
+    const probabilities = window.tf.tidy(() => {
+      const input = window.tf.tensor4d(pixels, [1, SIZE, SIZE, 1]);
+      const output = mnistModel.predict(input);
+      return Array.from(output.dataSync());
+    });
+    if (probabilities.length !== 10 || probabilities.some((value) => !Number.isFinite(value))) {
+      return null;
+    }
+    const total = probabilities.reduce((sum, value) => sum + value, 0);
+    return total > 0 ? probabilities.map((value) => value / total) : null;
+  } catch (error) {
+    mnistModelReady = false;
+    return null;
+  }
 }
 
 function similarity(input, template) {
@@ -351,13 +396,44 @@ function createTemplates() {
     ["9", "M 22 14 C 20 19 14 19 10 17 C 3 13 7 4 15 5 C 23 6 24 15 20 21 C 18 24 14 26 10 25"],
   ];
 
-  templates = definitions.map(([digit, path]) => ({
-    digit: Number(digit),
-    pixels: rasterizePath(path),
-  }));
+  templates = Array.from({ length: 10 }, () => []);
+
+  definitions.forEach(([digit, path]) => {
+    const target = templates[Number(digit)];
+    [
+      { rotation: 0, dx: 0, dy: 0, scaleX: 1, scaleY: 1, lineWidth: 4.3 },
+      { rotation: -0.12, dx: -0.3, dy: 0, scaleX: 0.98, scaleY: 1.04, lineWidth: 4.1 },
+      { rotation: 0.12, dx: 0.3, dy: 0, scaleX: 1.02, scaleY: 0.98, lineWidth: 4.1 },
+      { rotation: 0, dx: 0, dy: 0.4, scaleX: 0.92, scaleY: 1.08, lineWidth: 4.6 },
+      { rotation: 0, dx: 0, dy: -0.4, scaleX: 1.08, scaleY: 0.92, lineWidth: 4.0 },
+    ].forEach((variant) => {
+      target.push({ pixels: rasterizePath(path, variant) });
+    });
+  });
+
+  const textFonts = [
+    "Arial",
+    "Verdana",
+    "Trebuchet MS",
+    "Georgia",
+    "Times New Roman",
+    "Malgun Gothic",
+  ];
+  for (let digit = 0; digit <= 9; digit += 1) {
+    textFonts.forEach((font) => {
+      [
+        { rotation: 0, dx: 0, dy: 0, scaleX: 1, scaleY: 1, fontSize: 25, weight: 800 },
+        { rotation: -0.1, dx: -0.5, dy: 0.2, scaleX: 0.94, scaleY: 1.05, fontSize: 25, weight: 800 },
+        { rotation: 0.1, dx: 0.5, dy: 0.2, scaleX: 1.04, scaleY: 0.96, fontSize: 25, weight: 800 },
+        { rotation: 0, dx: 0, dy: 0.5, scaleX: 0.88, scaleY: 1.08, fontSize: 24, weight: 700 },
+      ].forEach((variant) => {
+        templates[digit].push({ pixels: rasterizeText(String(digit), font, variant) });
+      });
+    });
+  }
 }
 
-function rasterizePath(path) {
+function rasterizePath(path, variant = {}) {
   const canvas = document.createElement("canvas");
   canvas.width = SIZE;
   canvas.height = SIZE;
@@ -367,15 +443,75 @@ function rasterizePath(path) {
   ctx.strokeStyle = "#fff";
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  ctx.lineWidth = 4.3;
+  ctx.lineWidth = variant.lineWidth || 4.3;
   const p = new Path2D(path);
+  ctx.save();
+  ctx.translate(SIZE / 2 + (variant.dx || 0), SIZE / 2 + (variant.dy || 0));
+  ctx.rotate(variant.rotation || 0);
+  ctx.scale(variant.scaleX || 1, variant.scaleY || 1);
+  ctx.translate(-SIZE / 2, -SIZE / 2);
   ctx.stroke(p);
+  ctx.restore();
+  return canvasToPixels(canvas);
+}
+
+function rasterizeText(digit, font, variant = {}) {
+  const canvas = document.createElement("canvas");
+  canvas.width = SIZE;
+  canvas.height = SIZE;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, SIZE, SIZE);
+  ctx.fillStyle = "#fff";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `${variant.weight || 800} ${variant.fontSize || 25}px ${font}`;
+  ctx.save();
+  ctx.translate(SIZE / 2 + (variant.dx || 0), SIZE / 2 + 1 + (variant.dy || 0));
+  ctx.rotate(variant.rotation || 0);
+  ctx.scale(variant.scaleX || 1, variant.scaleY || 1);
+  ctx.fillText(digit, 0, 0);
+  ctx.restore();
+  return canvasToPixels(canvas);
+}
+
+function canvasToPixels(canvas) {
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
   const imageData = ctx.getImageData(0, 0, SIZE, SIZE);
   const pixels = [];
   for (let i = 0; i < imageData.data.length; i += 4) {
     pixels.push(imageData.data[i] / 255);
   }
   return soften(pixels);
+}
+
+async function loadMnistModel() {
+  if (!window.tf) {
+    inputStatus.textContent = "내장 모델";
+    return;
+  }
+
+  inputStatus.textContent = "모델 준비 중";
+  for (const url of TFJS_MODEL_URLS) {
+    try {
+      const model = await window.tf.loadLayersModel(url);
+      const outputShape = model.outputs && model.outputs[0] && model.outputs[0].shape;
+      if (!outputShape || outputShape[outputShape.length - 1] !== 10) {
+        model.dispose();
+        continue;
+      }
+      mnistModel = model;
+      mnistModelReady = true;
+      inputStatus.textContent = hasInk ? "예측 가능" : "실제 모델 준비";
+      resultCopy.textContent = "예측하기를 누르면 실제 MNIST 학습 모델의 소프트맥스 확률이 표시됩니다.";
+      return;
+    } catch (error) {
+      mnistModelReady = false;
+    }
+  }
+
+  inputStatus.textContent = hasInk ? "예측 가능" : "내장 모델";
+  resultCopy.textContent = "실제 모델을 불러오지 못하면 가벼운 내장 예측 모델로 바로 실행됩니다.";
 }
 
 drawCanvas.addEventListener("pointerdown", beginDraw);
@@ -396,3 +532,4 @@ missionButtons.forEach((button) => {
 
 createTemplates();
 resetAll();
+loadMnistModel();

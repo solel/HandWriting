@@ -217,6 +217,83 @@
           </article>
         </div>
 
+        <div class="hidden-visual" aria-label="은닉층 특징 조합 시각화">
+          <div class="hidden-copy">
+            <p class="eyebrow">은닉층 들여다보기</p>
+            <h3>픽셀에서 특징으로</h3>
+            <p>
+              은닉층은 784개 값을 바로 답으로 바꾸는 것이 아니라, 선의 양과 위치 같은 단서를 조합합니다.
+            </p>
+            <p class="hidden-tip">막대가 높을수록 그 특징이 강하게 나타난다는 뜻입니다.</p>
+          </div>
+          <div class="hidden-nodes">
+            <div class="hidden-node">
+              <span>선의 양</span>
+              <div class="hidden-bar"><i id="hiddenInk"></i></div>
+            </div>
+            <div class="hidden-node">
+              <span>위쪽 특징</span>
+              <div class="hidden-bar"><i id="hiddenTop"></i></div>
+            </div>
+            <div class="hidden-node">
+              <span>가운데 특징</span>
+              <div class="hidden-bar"><i id="hiddenCenter"></i></div>
+            </div>
+            <div class="hidden-node">
+              <span>왼쪽 특징</span>
+              <div class="hidden-bar"><i id="hiddenLeft"></i></div>
+            </div>
+            <div class="hidden-node">
+              <span>오른쪽 특징</span>
+              <div class="hidden-bar"><i id="hiddenRight"></i></div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <section class="quiz-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">개념 확인 퀴즈</p>
+            <h2>AI의 계산 흐름 맞추기</h2>
+          </div>
+          <p>
+            숫자를 예측하기 전에, 손글씨가 신경망 안에서 어떤 순서로 처리되는지 짧게 확인해 봅니다.
+          </p>
+        </div>
+
+        <div class="quiz-list" id="quizList">
+          <article class="quiz-card">
+            <strong>Q1. 28×28 픽셀을 한 줄로 펼치면 몇 개의 입력값이 될까요?</strong>
+            <div class="quiz-options">
+              <button type="button" data-correct="false">56개</button>
+              <button type="button" data-correct="true">784개</button>
+              <button type="button" data-correct="false">100개</button>
+            </div>
+            <p class="quiz-feedback" aria-live="polite"></p>
+          </article>
+
+          <article class="quiz-card">
+            <strong>Q2. 은닉층에서 주로 하는 일은 무엇일까요?</strong>
+            <div class="quiz-options">
+              <button type="button" data-correct="false">정답 숫자만 저장하기</button>
+              <button type="button" data-correct="true">픽셀에서 특징 조합하기</button>
+              <button type="button" data-correct="false">이미지를 크게 확대하기</button>
+            </div>
+            <p class="quiz-feedback" aria-live="polite"></p>
+          </article>
+
+          <article class="quiz-card">
+            <strong>Q3. 출력층이 10개 노드인 이유는 무엇일까요?</strong>
+            <div class="quiz-options">
+              <button type="button" data-correct="true">0~9 숫자 10개를 구분하기 위해</button>
+              <button type="button" data-correct="false">28×28 픽셀 때문</button>
+              <button type="button" data-correct="false">정확도가 항상 10%라서</button>
+            </div>
+            <p class="quiz-feedback" aria-live="polite"></p>
+          </article>
+        </div>
       </section>
 
       <section class="learning-grid">

@@ -16,6 +16,14 @@ const inkAmount = document.querySelector("#inkAmount");
 const normalRange = document.querySelector("#normalRange");
 const missionBox = document.querySelector("#missionBox");
 const missionButtons = document.querySelectorAll("[data-mission]");
+const quizList = document.querySelector("#quizList");
+const hiddenBars = {
+  ink: document.querySelector("#hiddenInk"),
+  top: document.querySelector("#hiddenTop"),
+  center: document.querySelector("#hiddenCenter"),
+  left: document.querySelector("#hiddenLeft"),
+  right: document.querySelector("#hiddenRight"),
+};
 
 const SIZE = 28;
 const TEMPLATE_SIZE = SIZE * SIZE;
@@ -104,6 +112,7 @@ function resetAll() {
   renderVector(currentPixels);
   renderProbabilities(new Array(10).fill(0), -1);
   updateStats(currentPixels);
+  renderHiddenLayer(currentPixels);
 }
 
 function updatePixels(runPrediction = true) {
@@ -113,6 +122,7 @@ function updatePixels(runPrediction = true) {
   renderPixels(pixels);
   renderVector(pixels);
   updateStats(pixels);
+  renderHiddenLayer(pixels);
   if (runPrediction) predict();
 }
 
@@ -236,6 +246,27 @@ function updateStats(pixels) {
   const max = Math.max(...pixels);
   inkAmount.textContent = `잉크 ${ink}%`;
   normalRange.textContent = `0.00~${max.toFixed(2)}`;
+}
+
+function renderHiddenLayer(pixels) {
+  const features = extractFeatures(pixels);
+  const values = {
+    ink: clamp01(features.total / 78),
+    top: clamp01(features.topRatio * 2.5),
+    center: clamp01(features.centerRatio * 3.2),
+    left: clamp01(features.leftRatio * 2.4),
+    right: clamp01(features.rightRatio * 2.4),
+  };
+
+  Object.entries(values).forEach(([key, value]) => {
+    if (hiddenBars[key]) {
+      hiddenBars[key].style.height = `${Math.max(6, Math.round(value * 100))}%`;
+    }
+  });
+}
+
+function clamp01(value) {
+  return Math.max(0, Math.min(1, value));
 }
 
 function renderProbabilities(probabilities, winner) {
@@ -554,6 +585,26 @@ missionButtons.forEach((button) => {
     missionBox.textContent = button.dataset.mission;
   });
 });
+
+if (quizList) {
+  quizList.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-correct]");
+    if (!button) return;
+
+    const card = button.closest(".quiz-card");
+    const buttons = card.querySelectorAll("button[data-correct]");
+    const feedback = card.querySelector(".quiz-feedback");
+    const isCorrect = button.dataset.correct === "true";
+
+    buttons.forEach((item) => {
+      item.classList.remove("correct", "wrong");
+      if (item.dataset.correct === "true") item.classList.add("correct");
+    });
+
+    if (!isCorrect) button.classList.add("wrong");
+    feedback.textContent = isCorrect ? "맞아요. 이 개념이 오늘 실습의 핵심입니다." : "아쉬워요. 초록색 선택지가 핵심 개념입니다.";
+  });
+}
 
 createTemplates();
 resetAll();
